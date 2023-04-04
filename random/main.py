@@ -4,7 +4,7 @@
 # 실행 시간: 138.83111476898193 초
 # --------------------------------
 
-import csv
+import csv 
 import random
 import math
 import time

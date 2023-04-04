@@ -48,7 +48,7 @@ def nearest_neighbor_heuristic(cities):
 def a_star_algorithm(cities, heuristic_func):
     num_cities = len(cities)
     # initial_path = nearest_neighbor_heuristic(cities) + [0]  # 초기 해집합 생성
-    initial_path = mst_heuristic(cities) + [0]  # 초기 해집합 생성
+    initial_path = nearest_neighbor_heuristic(cities) + [0]  # 초기 해집합 생성
     initial_cost = sum(get_distance(cities[initial_path[i]], cities[initial_path[(i+1)%num_cities]]) for i in range(num_cities))
     queue = [(initial_path, initial_cost, 0)]
     visited_states = set()
