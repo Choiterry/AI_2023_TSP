@@ -18,7 +18,7 @@ import csv
 import random
 import math
 import time
-import heapq
+from collections import deque
 
 # 파일에서 도시 위치 불러오기
 with open('2023_AI_TSP.csv', 'r') as f:
@@ -32,43 +32,8 @@ def get_distance(city1, city2):
     x2, y2 = city2
     return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
-# Nearest Neighbor 휴리스틱 함수 정의
-def nearest_neighbor_heuristic(cities):
-    unvisited_cities = set(range(1, len(cities)))
-    current_city = 0
-    path = [current_city]
-    while unvisited_cities:
-        nearest_city = min(unvisited_cities, key=lambda city: get_distance(cities[current_city], cities[city]))
-        unvisited_cities.remove(nearest_city)
-        path.append(nearest_city)
-        current_city = nearest_city
-    return path
-
-# A* 알고리즘으로 TSP 문제 풀기
-def a_star_algorithm(cities, heuristic_func):
-    num_cities = len(cities)
-    # initial_path = nearest_neighbor_heuristic(cities) + [0]  # 초기 해집합 생성
-    initial_path = nearest_neighbor_heuristic(cities) + [0]  # 초기 해집합 생성
-    initial_cost = sum(get_distance(cities[initial_path[i]], cities[initial_path[(i+1)%num_cities]]) for i in range(num_cities))
-    queue = [(initial_path, initial_cost, 0)]
-    visited_states = set()
-    while queue:
-        path, cost, depth = queue.pop(0)
-        if depth == num_cities - 1:
-            return path, cost
-        visited_states.add(tuple(path))
-        current_city = path[-2]
-        for next_city in set(range(num_cities)) - set(path):
-            new_path = path[:-1] + [next_city, 0]
-            if tuple(new_path) not in visited_states:
-                new_cost = cost + get_distance(cities[current_city], cities[next_city]) + heuristic_func(cities[new_path[:-1]])
-                queue.append((new_path, new_cost, depth+1))
-        queue.sort(key=lambda x: x[1])
-    return None, None  # 경로가 없을 경우
-
-
 # 유전 알고리즘으로 TSP 문제 풀기
-def genetic_algorithm(cities, population_size=100, num_generations=1000, elite_size=20, mutation_rate=0.01):
+def genetic_algorithm(cities, population_size=100, num_generations=1000, elite_size=20, mutation_rate=0.01, subtree_size=50):
     num_cities = len(cities)
     population = []
     for i in range(population_size):
@@ -92,7 +57,7 @@ def genetic_algorithm(cities, population_size=100, num_generations=1000, elite_s
         new_population = elite_population[:]
         while len(new_population) < population_size:
             parent1, parent2 = random.sample(elite_population, 2)
-            child1, child2 = crossover(parent1, parent2)
+            child1, child2 = crossover(parent1, parent2, subtree_size)
             new_population.append(child1)
             new_population.append(child2)
 
@@ -110,20 +75,44 @@ def genetic_algorithm(cities, population_size=100, num_generations=1000, elite_s
 
     return best_path, best_distance
 
+
 # 교차 함수
-def crossover(parent1, parent2):
+def crossover(parent1, parent2, subtree_size):
     num_cities = len(parent1)
     start = random.randint(0, num_cities - 1)
-    end = random.randint(start + 1, num_cities)
-    child1 = parent1[:start] + parent2[start:end] + parent1[end:]
-    child2 = parent2[:start] + parent1[start:end] + parent2[end:]
+    end = min(start + subtree_size, num_cities)
+    subtree1 = parent1[start:end]
+    subtree2 = parent2[start:end]
+    new_subtree1, new_subtree2 = bfs_shuffle(subtree1[:], subtree2[:])
+    child1 = parent1[:start] + new_subtree1 + parent1[end:]
+    child2 = parent2[:start] + new_subtree2 + parent2[end:]
     return child1, child2
+
 
 # 돌연변이 함수
 def mutate(path):
     num_cities = len(path)
     i, j = random.sample(range(num_cities), 2)
     path[i], path[j] = path[j], path[i]
+
+
+# BFS를 이용하여 subtree 리스트 내 도시 위치들의 순서를 랜덤하게 섞습니다.
+def bfs_shuffle(subtree1, subtree2):
+    queue1 = deque([subtree1])
+    queue2 = deque([subtree2])
+    while queue1:
+        node1 = queue1.popleft()
+        node2 = queue2.popleft()
+        random.shuffle(node1)
+        random.shuffle(node2)
+        num_children = len(node1)
+        if num_children > 1:
+            mid = num_children // 2
+            queue1.append(node1[:mid])
+            queue1.append(node1[mid:])
+            queue2.append(node2[:mid])
+            queue2.append(node2[mid:])
+    return subtree1, subtree2
 
 # 실행 시간 측정 시작
 start_time = time.time()
