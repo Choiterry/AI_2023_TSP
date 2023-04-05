@@ -8,6 +8,8 @@ import csv
 import random
 import math
 import time
+import matplotlib.pyplot as plt
+
 
 # 파일에서 도시 위치 불러오기
 with open('2023_AI_TSP.csv', 'r') as f:
@@ -21,8 +23,16 @@ def get_distance(city1, city2):
     x2, y2 = city2
     return math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2)
 
+""" 
+# 모든 도시를 점으로 표시하는 그래프
+x, y = zip(*locations)
+plt.scatter(x, y)
+plt.show()
+""" 
+
+
 # 유전 알고리즘으로 TSP 문제 풀기
-def genetic_algorithm(cities, population_size=100, num_generations=1000, elite_size=20, mutation_rate=0.01):
+def genetic_algorithm(cities, population_size=50, num_generations=1000, elite_size=20, mutation_rate=0.01):
     num_cities = len(cities)
     population = []
     for i in range(population_size):
@@ -65,6 +75,7 @@ def genetic_algorithm(cities, population_size=100, num_generations=1000, elite_s
     return best_path, best_distance
 
 # 교차 함수
+""" 
 def crossover(parent1, parent2):
     num_cities = len(parent1)
     start = random.randint(0, num_cities - 1)
@@ -72,6 +83,52 @@ def crossover(parent1, parent2):
     child1 = parent1[:start] + parent2[start:end] + parent1[end:]
     child2 = parent2[:start] + parent1[start:end] + parent2[end:]
     return child1, child2
+ """ 
+
+
+def crossover(parent1, parent2):
+    num_cities = len(parent1)
+    edge_dict = {}
+    for i in range(num_cities):
+        edge_dict[parent1[i]] = parent1[(i+1)%num_cities]
+    child1, child2 = [-1]*num_cities, [-1]*num_cities
+    
+    # 먼저 child1에 parent1의 경로를 복사하고, 일부 간선을 parent2에서 가져와 갱신
+    curr_city = parent1[0]
+    child1[0] = curr_city
+    while True:
+        next_city = edge_dict[parent1[(parent1.index(curr_city)+1)%num_cities]]
+        if next_city in parent2:
+            curr_city = next_city
+            child1[parent1.index(curr_city)] = curr_city
+            del edge_dict[curr_city]
+        else:
+            break
+    for i in range(num_cities):
+        if child1[i] == -1:
+            child1[i] = parent2[i]
+    
+    # child2도 마찬가지로 구성
+    edge_dict = {}
+    for i in range(num_cities):
+        edge_dict[parent2[i]] = parent2[(i+1)%num_cities]
+    curr_city = parent2[0]
+    child2[0] = curr_city
+    while True:
+        next_city = edge_dict[parent2[(parent2.index(curr_city)+1)%num_cities]]
+        if next_city in parent1:
+            curr_city = next_city
+            child2[parent2.index(curr_city)] = curr_city
+            del edge_dict[curr_city]
+        else:
+            break
+    for i in range(num_cities):
+        if child2[i] == -1:
+            child2[i] = parent1[i]
+
+    return child1, child2
+
+
 
 # 돌연변이 함수
 def mutate(path):
