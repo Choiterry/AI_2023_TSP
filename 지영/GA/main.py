@@ -75,7 +75,6 @@ def genetic_algorithm(cities, population_size=50, num_generations=1000, elite_si
     return best_path, best_distance
 
 # 교차 함수
-""" 
 def crossover(parent1, parent2):
     num_cities = len(parent1)
     start = random.randint(0, num_cities - 1)
@@ -83,9 +82,8 @@ def crossover(parent1, parent2):
     child1 = parent1[:start] + parent2[start:end] + parent1[end:]
     child2 = parent2[:start] + parent1[start:end] + parent2[end:]
     return child1, child2
- """ 
 
-
+"""
 def crossover(parent1, parent2):
     num_cities = len(parent1)
     edge_dict = {}
@@ -127,7 +125,7 @@ def crossover(parent1, parent2):
             child2[i] = parent1[i]
 
     return child1, child2
-
+"""
 
 
 # 돌연변이 함수
