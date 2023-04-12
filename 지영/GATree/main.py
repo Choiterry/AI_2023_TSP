@@ -4,11 +4,13 @@ from sklearn.cluster import KMeans
 import random
 from queue import PriorityQueue
 
+# 데이터 파일 로드
 def load_data(filename):
     data = pd.read_csv(filename, header=None)
     cities = data.to_numpy()
     return cities
 
+# k-means 군집화 수행
 class KMeansCluster:
     def __init__(self, k, cities):
         self.k = k
@@ -25,8 +27,9 @@ class GeneticAlgorithm:
         self.mutation_rate = mutation_rate
         self.generations = generations
 
+    # 하나의 개체 = 하나의 방문 순서
     def create_individual(self):
-        individual = np.arange(0, len(self.cities))
+        individual = np.arange(0, len(self.cities)) # 첫번째 도시는 0번째 도시로 고정함
         np.random.shuffle(individual[1:])
         return individual
 
@@ -120,7 +123,7 @@ class GeneticAlgorithm:
         best_individual = population[best_individual_index]
         best_individual_distance = -self.fitness(best_individual)
 
-        return best_individual, best_individual_distance
+        return best_individual.reshape(-1), best_individual_distance
 
 class AStarHeuristic:
     def __init__(self, cities, paths):
@@ -182,7 +185,7 @@ class TSP:
         k_means = KMeansCluster(k, self.cities)
         cluster_labels = k_means.cluster()
 
-        # Perform genetic algorithm for each cluster and store results
+        # 각 군집에 대해 유전 알고리즘을 실행, 결과 저장
         cluster_results = []
         for i in range(k):
             cluster_cities = self.cities[cluster_labels == i]
@@ -190,18 +193,20 @@ class TSP:
             best_individual, best_individual_distance = ga.run()
             cluster_results.append((best_individual, best_individual_distance))
 
-        # Merge cluster paths using A* algorithm
+        # 나눠진 군집은 A* 알고리즘을 사용하여 merge
         merged_path, merged_distance = self.merge_paths(cluster_results)
 
         return merged_path, merged_distance
-
+    
+    #TSP 문제의 최종 경로를 합치는 과정
     def merge_paths(self, paths):
-        paths = sorted(paths, key=lambda x: x[1])  # Sort by distance
-        start = paths.pop(0)  # Start from shortest path
+        paths = sorted(paths, key=lambda x: x[1])  #경로를 거리가 짧은 순서로 정렬
+        start = paths.pop(0)  # start에서 가장 짧은 경로를 찾아 이어 붙임
 
         while paths:
             closest_path, closest_distance = None, float('inf')
             for i, (path, distance) in enumerate(paths):
+                # 가장 가까운 경로를 찾는 알고리즘은 A star 휴리스틱 사용 
                 a_star = AStarHeuristic(self.cities, {start[0][-1]: [path[0]]})
                 new_path, new_distance = a_star.run(path[0])
 
@@ -209,7 +214,7 @@ class TSP:
                     closest_path, closest_distance = i, new_distance
 
             closest_path, _ = paths.pop(closest_path)
-            start = (np.concatenate([start[0], closest_path[1:]]), start[1] + closest_distance)
+            start = (np.concatenate([start[0], closest_path[1:].tolist()]), start[1] + closest_distance)
 
         return start
 
@@ -217,8 +222,13 @@ class TSP:
         print("최단 경로: ", path)
         print("총 거리: ", distance)
 
-# Load data and solve TSP
+# 데이터 로드, TSP solve() 호출
 tsp = TSP("2023_AI_TSP.csv")
 final_path, final_distance = tsp.solve()
 
 tsp.display_result(final_path, final_distance)
+
+# 최단 경로 저장
+with open('example_solution.csv', 'w+') as f:
+    for city in final_path:
+        f.write(f"{city}\n")
