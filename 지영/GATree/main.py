@@ -189,7 +189,7 @@ class TSP:
         cluster_results = []
         for i in range(k):
             cluster_cities = self.cities[cluster_labels == i]
-            ga = GeneticAlgorithm(cluster_cities, population_size=50, mutation_rate=0.1, generations=100)
+            ga = GeneticAlgorithm(cluster_cities, population_size=50, mutation_rate=0.1, generations=1)
             best_individual, best_individual_distance = ga.run()
             cluster_results.append((best_individual, best_individual_distance))
 
@@ -198,25 +198,30 @@ class TSP:
 
         return merged_path, merged_distance
     
-    #TSP 문제의 최종 경로를 합치는 과정
+    # TSP 문제의 최종 경로를 합치는 과정
     def merge_paths(self, paths):
-        paths = sorted(paths, key=lambda x: x[1])  #경로를 거리가 짧은 순서로 정렬
+        paths = sorted(paths, key=lambda x: x[1])  # 경로를 거리가 짧은 순서로 정렬
         start = paths.pop(0)  # start에서 가장 짧은 경로를 찾아 이어 붙임
 
         while paths:
             closest_path, closest_distance = None, float('inf')
+            closest_index = -1
             for i, (path, distance) in enumerate(paths):
-                # 가장 가까운 경로를 찾는 알고리즘은 A star 휴리스틱 사용 
-                a_star = AStarHeuristic(self.cities, {start[0][-1]: [path[0]]})
-                new_path, new_distance = a_star.run(path[0])
+                # 가장 가까운 경로를 찾는 알고리즘은 A star 휴리스틱 사용
+                a_star = AStarHeuristic(self.cities, {start[0][-1]: [path[0]]})  # 여기를 수정
+                new_path, new_distance = a_star.run(path[0])  # 여기를 수정
 
                 if new_distance < closest_distance:
-                    closest_path, closest_distance = i, new_distance
+                    closest_path, closest_distance = path, new_distance
+                    closest_index = i
 
-            closest_path, _ = paths.pop(closest_path)
-            start = (np.concatenate([start[0], closest_path[1:].tolist()]), start[1] + closest_distance)
+            # start와 가장 가까운 군집 경로를 결합
+            paths.pop(closest_index)
+            start = (np.concatenate([start[0], closest_path]), start[1] + closest_distance)
 
         return start
+
+
 
     def display_result(self, path, distance):
         print("최단 경로: ", path)
