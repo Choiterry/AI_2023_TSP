@@ -136,6 +136,21 @@ class GeneticAlgorithm:
         best_individual_distance = -self.fitness(best_individual)
 
         return best_individual.reshape(-1), best_individual_distance
+    
+    def check_crossover_mutation(self):
+        parent1 = np.arange(0, len(self.cities))
+        np.random.shuffle(parent1[1:])
+        parent2 = np.arange(0, len(self.cities))
+        np.random.shuffle(parent2[1:])
+
+        child = self.crossover(parent1, parent2)
+        child = self.mutate(child)
+
+        parent1_set = set(parent1)
+        parent2_set = set(parent2)
+        child_set = set(child)
+
+        return len(parent1_set) == len(child_set) and len(parent2_set) == len(child_set)
 
 class AStarHeuristic:
     def __init__(self, cities, paths):
@@ -240,13 +255,23 @@ class TSP:
         print("최단 경로: ", path)
         print("총 거리: ", distance)
 
-# 데이터 로드, TSP solve() 호출
-tsp = TSP("2023_AI_TSP.csv")
-final_path, final_distance = tsp.solve()
+if __name__ == "__main__":
+    # 데이터 로드, TSP solve() 호출
+    tsp = TSP("2023_AI_TSP.csv")
+    final_path, final_distance = tsp.solve()
 
-tsp.display_result(final_path, final_distance)
+    tsp.display_result(final_path, final_distance)
 
-# 최단 경로 저장
-with open('example_solution.csv', 'w') as f:
-    for city in final_path:
-        f.write(f"{city}\n")
+    # 최단 경로 저장
+    with open('example_solution.csv', 'w') as f:
+        for city in final_path:
+            f.write(f"{city}\n")
+
+    # 교차 및 변이 과정에서 누락 발생 여부 확인
+    ga = GeneticAlgorithm(tsp.cities, 50, 0.1, 5)
+    for i in range(100):
+        if not ga.check_crossover_mutation():
+            print("교차 및 변이 과정에서 누락 발생")
+            break
+    else:
+        print("교차 및 변이 과정에서 누락이 발생하지 않았습니다.")
