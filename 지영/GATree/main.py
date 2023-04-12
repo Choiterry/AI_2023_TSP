@@ -30,7 +30,6 @@ class GeneticAlgorithm:
         np.random.shuffle(individual[1:])
         return individual
 
-
     def create_population(self):
         return np.array([self.create_individual() for _ in range(self.population_size)])
 
@@ -40,7 +39,6 @@ class GeneticAlgorithm:
             total_distance += np.linalg.norm(self.cities[individual[i]] - self.cities[individual[i + 1]])
         total_distance += np.linalg.norm(self.cities[individual[-1]] - self.cities[0])  # Return to start
         return -total_distance
-
 
     def rank_population(self, population):
         fitness_results = np.array([self.fitness(individual) for individual in population])
@@ -64,13 +62,24 @@ class GeneticAlgorithm:
                 child[next_pos] = gene
                 next_pos += 1
         return child
-
+    # 변이 방식: 더블 브리지
     def mutate(self, individual):
-        for i in range(1, len(individual)):
-            if random.random() < self.mutation_rate:
-                swap_index = random.randint(1, len(individual) - 1)
-                individual[i], individual[swap_index] = individual[swap_index], individual[i]
+        if random.random() < self.mutation_rate:
+            size = len(individual)
+            pos1 = random.randint(1, size//4)
+            pos2 = random.randint(pos1+1, size//2)
+            pos3 = random.randint(pos2+1, 3*size//4)
+            pos4 = random.randint(pos3+1, size-1)
+            
+            p1 = individual[:pos1]
+            p2 = individual[pos2:pos3]
+            p3 = individual[pos4:]
+            p4 = individual[pos1:pos2]
+            p5 = individual[pos3:pos4]
+            
+            individual = np.concatenate((p1, p2, p3, p4, p5))
         return individual
+
 
     def run(self):
         population = self.create_population()
@@ -145,7 +154,6 @@ class AStarHeuristic:
                         open_set.put((f_score[neighbor], neighbor))
                         open_set_hash.add(neighbor)
         return None, float('inf')
-
 
 class TSP:
     def __init__(self, data_filename):
