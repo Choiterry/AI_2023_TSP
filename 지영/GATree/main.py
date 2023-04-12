@@ -10,17 +10,6 @@ def load_data(filename):
     cities = data.to_numpy()
     return cities
 
-def create_adjacency_dict(paths):
-    adjacency_dict = {}
-    for path, _ in paths:
-        for i in range(len(path) - 1):
-            if path[i] not in adjacency_dict:
-                adjacency_dict[path[i]] = [path[i + 1]]
-            else:
-                adjacency_dict[path[i]].append(path[i + 1])
-
-    return adjacency_dict
-
 # k-means 군집화 수행
 class KMeansCluster:
     def __init__(self, k, cities):
@@ -29,8 +18,7 @@ class KMeansCluster:
 
     def cluster(self):
         kmeans = KMeans(n_clusters=self.k, random_state=42).fit(self.cities)
-        cluster_indices = [np.where(kmeans.labels_ == i)[0] for i in range(self.k)]
-        return kmeans.labels_, cluster_indices
+        return kmeans.labels_
 
 class GeneticAlgorithm:
     def __init__(self, cities, population_size, mutation_rate, generations):
@@ -136,21 +124,6 @@ class GeneticAlgorithm:
         best_individual_distance = -self.fitness(best_individual)
 
         return best_individual.reshape(-1), best_individual_distance
-    
-    def check_crossover_mutation(self):
-        parent1 = np.arange(0, len(self.cities))
-        np.random.shuffle(parent1[1:])
-        parent2 = np.arange(0, len(self.cities))
-        np.random.shuffle(parent2[1:])
-
-        child = self.crossover(parent1, parent2)
-        child = self.mutate(child)
-
-        parent1_set = set(parent1)
-        parent2_set = set(parent2)
-        child_set = set(child)
-
-        return len(parent1_set) == len(child_set) and len(parent2_set) == len(child_set)
 
 class AStarHeuristic:
     def __init__(self, cities, paths):
@@ -210,36 +183,31 @@ class TSP:
     def solve(self):
         k = 5
         k_means = KMeansCluster(k, self.cities)
-        cluster_labels, cluster_indices = k_means.cluster()
+        cluster_labels = k_means.cluster()
+
         # 각 군집에 대해 유전 알고리즘을 실행, 결과 저장
         cluster_results = []
         for i in range(k):
             cluster_cities = self.cities[cluster_labels == i]
-            cluster_index = cluster_indices[i]
-            ga = GeneticAlgorithm(cluster_cities, population_size=50, mutation_rate=0.1, generations=5)
+            ga = GeneticAlgorithm(cluster_cities, population_size=50, mutation_rate=0.1, generations=100)
             best_individual, best_individual_distance = ga.run()
-            # 원래 인덱스에 대해 최적 경로를 구성
-            best_individual = cluster_index[best_individual]
             cluster_results.append((best_individual, best_individual_distance))
 
         # 나눠진 군집은 A* 알고리즘을 사용하여 merge
         merged_path, merged_distance = self.merge_paths(cluster_results)
 
         return merged_path, merged_distance
-
-
+    
     #TSP 문제의 최종 경로를 합치는 과정
     def merge_paths(self, paths):
         paths = sorted(paths, key=lambda x: x[1])  #경로를 거리가 짧은 순서로 정렬
         start = paths.pop(0)  # start에서 가장 짧은 경로를 찾아 이어 붙임
 
-        adjacency_dict = create_adjacency_dict(paths)
-
         while paths:
             closest_path, closest_distance = None, float('inf')
             for i, (path, distance) in enumerate(paths):
                 # 가장 가까운 경로를 찾는 알고리즘은 A star 휴리스틱 사용 
-                a_star = AStarHeuristic(self.cities, adjacency_dict)
+                a_star = AStarHeuristic(self.cities, {start[0][-1]: [path[0]]})
                 new_path, new_distance = a_star.run(path[0])
 
                 if new_distance < closest_distance:
@@ -247,7 +215,6 @@ class TSP:
 
             closest_path, _ = paths.pop(closest_path)
             start = (np.concatenate([start[0], closest_path[1:].tolist()]), start[1] + closest_distance)
-            adjacency_dict = create_adjacency_dict(paths)
 
         return start
 
@@ -255,23 +222,13 @@ class TSP:
         print("최단 경로: ", path)
         print("총 거리: ", distance)
 
-if __name__ == "__main__":
-    # 데이터 로드, TSP solve() 호출
-    tsp = TSP("2023_AI_TSP.csv")
-    final_path, final_distance = tsp.solve()
+# 데이터 로드, TSP solve() 호출
+tsp = TSP("2023_AI_TSP.csv")
+final_path, final_distance = tsp.solve()
 
-    tsp.display_result(final_path, final_distance)
+tsp.display_result(final_path, final_distance)
 
-    # 최단 경로 저장
-    with open('example_solution.csv', 'w') as f:
-        for city in final_path:
-            f.write(f"{city}\n")
-
-    # 교차 및 변이 과정에서 누락 발생 여부 확인
-    ga = GeneticAlgorithm(tsp.cities, 50, 0.1, 5)
-    for i in range(100):
-        if not ga.check_crossover_mutation():
-            print("교차 및 변이 과정에서 누락 발생")
-            break
-    else:
-        print("교차 및 변이 과정에서 누락이 발생하지 않았습니다.")
+# 최단 경로 저장
+with open('example_solution.csv', 'w+') as f:
+    for city in final_path:
+        f.write(f"{city}\n")
