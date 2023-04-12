@@ -189,7 +189,7 @@ class TSP:
         cluster_results = []
         for i in range(k):
             cluster_cities = self.cities[cluster_labels == i]
-            ga = GeneticAlgorithm(cluster_cities, population_size=50, mutation_rate=0.1, generations=1)
+            ga = GeneticAlgorithm(cluster_cities, population_size=50, mutation_rate=0.1, generations=100)
             best_individual, best_individual_distance = ga.run()
             cluster_results.append((best_individual, best_individual_distance))
 
