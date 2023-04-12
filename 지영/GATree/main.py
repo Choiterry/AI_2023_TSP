@@ -50,18 +50,35 @@ class GeneticAlgorithm:
             if random.random() < (i + 1) / len(ranked_population):
                 selected_indices.append(ranked_population[i])
         return population[selected_indices]
+    
+    def bfs_subtree(self, individual, start_node):
+        queue = [start_node]
+        subtree = {start_node}  # 시작 노드는 subtree에 포함
+        while queue:
+            node = queue.pop(0)
+            for neighbor in individual:
+                if neighbor not in subtree and neighbor not in queue:
+                    queue.append(neighbor)
+                    subtree.add(neighbor)
+        return subtree
 
+    
+    # 교차 과정: BFS 활용
     def crossover(self, parent1, parent2):
-        crossover_point = random.randint(1, len(parent1) - 1)
         child = np.zeros(len(parent1), dtype=int)
-        child[:crossover_point] = parent1[:crossover_point]
+        child[0] = parent1[0]  # 첫 번째 노드는 항상 고정
 
-        next_pos = crossover_point
-        for gene in parent2:
-            if gene not in child:
-                child[next_pos] = gene
-                next_pos += 1
+        parent1_subtree = self.bfs_subtree(parent1, child[0])
+        parent2_subtree = self.bfs_subtree(parent2, child[0])
+
+        for i in range(1, len(parent1)):
+            if parent1[i] in parent1_subtree:
+                child[i] = parent1[i]
+            elif parent1[i] in parent2_subtree:
+                child[i] = parent2[parent1.tolist().index(parent1[i])]
+
         return child
+
     # 변이 방식: 더블 브리지
     def mutate(self, individual):
         if random.random() < self.mutation_rate:
