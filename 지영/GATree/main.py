@@ -20,22 +20,26 @@ class KMeansCluster:
         kmeans = KMeans(n_clusters=self.k, random_state=42).fit(self.cities)
         return kmeans.labels_
 
+# 유전 알고리즘을 수행
 class GeneticAlgorithm:
+    # 객체 초기화
     def __init__(self, cities, population_size, mutation_rate, generations):
         self.cities = cities
         self.population_size = population_size
         self.mutation_rate = mutation_rate
         self.generations = generations
-
-    # 하나의 개체 = 하나의 방문 순서
+        
+    # 하나의 개체(=하나의 경로)를 생성
     def create_individual(self):
-        individual = np.arange(0, len(self.cities)) # 첫번째 도시는 0번째 도시로 고정함
+        individual = np.arange(0, len(self.cities))
         np.random.shuffle(individual[1:])
         return individual
 
+    # 전체 개체 집단을 생성
     def create_population(self):
         return np.array([self.create_individual() for _ in range(self.population_size)])
-
+    
+    # 개체의 적합도 계산
     def fitness(self, individual):
         total_distance = 0
         for i in range(len(individual) - 1):
@@ -43,10 +47,12 @@ class GeneticAlgorithm:
         total_distance += np.linalg.norm(self.cities[individual[-1]] - self.cities[0])  # Return to start
         return -total_distance
 
+    # 개체 집단을 적합도 순으로 정렬
     def rank_population(self, population):
         fitness_results = np.array([self.fitness(individual) for individual in population])
         return list(np.argsort(fitness_results))
 
+    #  부모 개체 선택
     def selection(self, population, ranked_population):
         selected_indices = []
         for i in range(len(ranked_population)):
@@ -54,6 +60,7 @@ class GeneticAlgorithm:
                 selected_indices.append(ranked_population[i])
         return population[selected_indices]
     
+    # 개체의 BFS 서브트리를 생성
     def bfs_subtree(self, individual, start_node):
         queue = [start_node]
         subtree = {start_node}  # 시작 노드는 subtree에 포함
@@ -66,7 +73,7 @@ class GeneticAlgorithm:
         return subtree
 
     
-    # 교차 과정: BFS 활용
+    # 교차 - BFS 활용
     def crossover(self, parent1, parent2):
         child = np.zeros(len(parent1), dtype=int)
         child[0] = parent1[0]  # 첫 번째 노드는 항상 고정
@@ -82,7 +89,7 @@ class GeneticAlgorithm:
 
         return child
 
-    # 변이 방식: 더블 브리지
+    # 변이 - 더블 브리지
     def mutate(self, individual):
         if random.random() < self.mutation_rate:
             size = len(individual)
@@ -100,7 +107,7 @@ class GeneticAlgorithm:
             individual = np.concatenate((p1, p2, p3, p4, p5))
         return individual
 
-
+    # 실행 - 최적의 개체와 거리를 반환
     def run(self):
         population = self.create_population()
 
@@ -125,23 +132,28 @@ class GeneticAlgorithm:
 
         return best_individual.reshape(-1), best_individual_distance
 
+# A* 휴리스틱을 사용하여 군집 간 최단 경로를 탐색
 class AStarHeuristic:
+    # 객체 초기화
     def __init__(self, cities, paths):
         self.cities = cities
         self.paths = paths
 
+    # 두 도시 간의 유클리드 거리 계산
     def euclidean_distance(self, city1, city2):
         return np.linalg.norm(self.cities[city1] - self.cities[city2])
 
+    # 경로 재구성
     def reconstruct_path(self, came_from, start, goal):
         path = [goal]
-        current = goal
+        current = goal # 제일 끝 경로부터 시작 경로까지 거꾸로 추적
         while current != start:
             current = came_from[current]
             path.append(current)
-        path.reverse()
+        path.reverse() # 실제 순서대로 구성
         return path
 
+    # 실행 - 시작 도시에서 목표 도시까지의 최단 경로와 거리를 반환
     def run(self, goal):
         start = 0
         open_set = PriorityQueue()
@@ -176,12 +188,14 @@ class AStarHeuristic:
         return None, float('inf')
 
 class TSP:
+    # 객체 초기화, 데이터 로드
     def __init__(self, data_filename):
         self.data_filename = data_filename
         self.cities = load_data(self.data_filename)
 
+    # TSP 문제 해결
     def solve(self):
-        k = 5
+        k = 5 # 군집은 5개로 지정
         k_means = KMeansCluster(k, self.cities)
         cluster_labels = k_means.cluster()
 
@@ -189,7 +203,7 @@ class TSP:
         cluster_results = []
         for i in range(k):
             cluster_cities = self.cities[cluster_labels == i]
-            ga = GeneticAlgorithm(cluster_cities, population_size=50, mutation_rate=0.1, generations=100)
+            ga = GeneticAlgorithm(cluster_cities, population_size=50, mutation_rate=0.1, generations=1000)
             best_individual, best_individual_distance = ga.run()
             cluster_results.append((best_individual, best_individual_distance))
 
@@ -208,8 +222,8 @@ class TSP:
             closest_index = -1
             for i, (path, distance) in enumerate(paths):
                 # 가장 가까운 경로를 찾는 알고리즘은 A star 휴리스틱 사용
-                a_star = AStarHeuristic(self.cities, {start[0][-1]: [path[0]]})  # 여기를 수정
-                new_path, new_distance = a_star.run(path[0])  # 여기를 수정
+                a_star = AStarHeuristic(self.cities, {start[0][-1]: [path[0]]})
+                new_path, new_distance = a_star.run(path[0])
 
                 if new_distance < closest_distance:
                     closest_path, closest_distance = path, new_distance
@@ -221,8 +235,7 @@ class TSP:
 
         return start
 
-
-
+    # 최단 경로와 총 거리를 출력
     def display_result(self, path, distance):
         print("최단 경로: ", path)
         print("총 거리: ", distance)
@@ -231,6 +244,7 @@ class TSP:
 tsp = TSP("2023_AI_TSP.csv")
 final_path, final_distance = tsp.solve()
 
+# 결과 출력
 tsp.display_result(final_path, final_distance)
 
 # 최단 경로 저장
