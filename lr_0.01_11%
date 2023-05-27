@@ -81,4 +81,4 @@ with torch.no_grad():
 
 accuracy = 100 * total_correct / total_samples
 print(f'Test Accuracy: {accuracy}%')
-# accuracy : 77.8%
+# accuracy : 10.8%
