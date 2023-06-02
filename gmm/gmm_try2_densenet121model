@@ -1,0 +1,74 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+from torchvision.models import densenet121
+from sklearn.mixture import GaussianMixture
+import numpy as np
+
+transform = transforms.Compose([
+    transforms.CenterCrop(56),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+])
+
+train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=4, shuffle=True)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=4, shuffle=False)
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+train_features = []
+train_labels = []
+n_components = 4
+gmm = GaussianMixture(n_components=n_components)
+
+for batch_idx, (images, labels) in enumerate(train_loader):
+    images = images.to(device)
+    batch_size = images.size(0)
+    features = images.view(batch_size, -1)
+    gmm.fit(features.detach.cpu().numpy())
+
+model = densenet121(pretrained=False)
+model.fc = nn.Linear(model.classifier.in_features, n_components)
+model = model.to(device)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-7)
+
+num_epochs = 10
+
+for epoch in range(num_epochs):
+    model.train()
+    for images, labels in train_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+        optimizer.zero_grad()
+        features = images.view(images.size(0), -1)
+        cluster_labels = gmm.predict(features.cpu().numpy())
+        cluster_labels = torch.from_numpy(cluster_labels).to(device)
+        outputs = model(features)
+        loss = criterion(outputs, cluster_labels)
+        loss.backward()
+        optimizer.step()
+        
+    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}')
+
+model.eval()
+total_correct = 0
+total_samples = 0
+
+with torch.no_grad():
+    for images, labels in test_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+        outputs = model(images)
+        _, predicted = torch.max(outputs, 1)
+        total_samples += labels.size(0)
+        total_correct += (predicted == labels).sum().item()
+
+accuracy = 100 * total_correct / total_samples
+print(f'Test Accuracy: {accuracy}%')
