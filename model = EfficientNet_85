@@ -1,0 +1,89 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+from efficientnet_pytorch import EfficientNet
+
+transform = transforms.Compose([
+    transforms.RandomCrop(32, padding=4),
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
+])
+
+train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=128, shuffle=True)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False)
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+model = EfficientNet.from_pretrained('efficientnet-b0', num_classes=20)
+model = model.to(device)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
+
+num_epochs = 15
+best_acc = 0
+best_epoch = 0
+
+for epoch in range(num_epochs):
+    model.train()
+    for images, labels in train_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}')
+
+# Model evaluation
+model.eval()
+total_correct = 0
+total_samples = 0 
+
+with torch.no_grad():
+    for images, labels in test_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+
+        outputs = model(images)
+        _, predicted = torch.max(outputs, 1)
+        total_samples += labels.size(0)
+        total_correct += (predicted == labels).sum().item()
+        
+
+accuracy = 100 * total_correct / total_samples
+if accuracy > best_acc:
+        best_acc = accuracy
+        best_epoch = epoch
+print(f'Test Accuracy: {accuracy}%')
+
+print(f"Best Test Acc: {best_acc:.2f} at Epoch {best_epoch}")
+#Files already downloaded and verified
+#Files already downloaded and verified
+#Loaded pretrained weights for efficientnet-b0
+#Epoch [1/15], Loss: 0.7262428998947144
+#Epoch [2/15], Loss: 0.7960622906684875
+#Epoch [3/15], Loss: 0.640795111656189
+#Epoch [4/15], Loss: 0.4946424961090088
+#Epoch [5/15], Loss: 0.5913540124893188
+#Epoch [6/15], Loss: 0.3979707360267639
+#Epoch [7/15], Loss: 0.5122584700584412
+#Epoch [8/15], Loss: 0.4071738123893738
+#Epoch [9/15], Loss: 0.45546627044677734
+#Epoch [10/15], Loss: 0.29913395643234253
+#Epoch [11/15], Loss: 0.4597124457359314
+#Epoch [12/15], Loss: 0.24581237137317657
+#Epoch [13/15], Loss: 0.40442904829978943
+#Epoch [14/15], Loss: 0.1044875979423523
+#Epoch [15/15], Loss: 0.3188439905643463
+#Test Accuracy: 84.24%
+#Best Test Acc: 84.24 at Epoch 14
